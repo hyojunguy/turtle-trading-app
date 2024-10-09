@@ -1,1 +1,0 @@
-# turtle-trading-app
