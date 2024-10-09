@@ -1,14 +1,32 @@
 import React, { useState } from 'react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, Brush,
 } from 'recharts';
 import { Alert, AlertTitle } from '@mui/material';
-import { Button, TextField, CircularProgress } from '@mui/material';
+import { Button, TextField, CircularProgress, Chip, Stack } from '@mui/material';
 import { Search } from '@mui/icons-material';
 
-// 주식 데이터를 가져오는 함수 (동일)
+// 미국 시가총액 상위 10개 기업 심볼 리스트
+const top10Symbols = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA', 'BRK.B', 'NVDA', 'META', 'JPM', 'JNJ'];
+
+// 주식 데이터를 가져오는 함수
 const fetchStockData = async (symbol) => {
   const apiKey = process.env.REACT_APP_ALPHA_VANTAGE_API_KEY;
+
+  // 캐시된 데이터 확인
+  const cachedData = localStorage.getItem(`stockData_${symbol}`);
+  if (cachedData) {
+    const parsedData = JSON.parse(cachedData);
+    const cachedDate = parsedData.date; // 캐시된 데이터의 날짜
+    const today = new Date().toISOString().split('T')[0];
+    if (cachedDate === today) {
+      // 캐시된 데이터가 오늘 날짜인 경우, 캐시된 데이터 반환
+      console.log('캐시된 데이터를 사용합니다.');
+      return parsedData.data;
+    }
+  }
+
+  // 캐시가 없거나 유효하지 않은 경우 API 호출
   const apiUrl = `https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=${symbol}&apikey=${apiKey}`;
 
   try {
@@ -28,42 +46,63 @@ const fetchStockData = async (symbol) => {
     }));
 
     // 날짜 순서 정렬 (오름차순)
-    return stockData.reverse();
+    const sortedData = stockData.reverse();
+
+    // 데이터 캐싱
+    const cacheEntry = {
+      date: new Date().toISOString().split('T')[0], // 오늘 날짜
+      data: sortedData,
+    };
+    localStorage.setItem(`stockData_${symbol}`, JSON.stringify(cacheEntry));
+
+    return sortedData;
   } catch (error) {
     console.error(error);
     throw new Error('데이터를 가져오는 중 오류가 발생했습니다.');
   }
 };
 
-// N값 계산 함수 (동일)
-const calculateN = (data) => {
-  // True Range(TR) 계산
+// N값과 TR 값 계산 함수
+const calculateTRValues = (data) => {
   const trValues = data.map((current, index) => {
-    if (index === 0) return current.high - current.low;
+    if (index === 0) {
+      return {
+        ...current,
+        tr: current.high - current.low,
+        n: 0, // 첫 번째 값은 N 값을 계산할 수 없음
+      };
+    }
     const previous = data[index - 1];
     const highLow = current.high - current.low;
     const highClose = Math.abs(current.high - previous.close);
     const lowClose = Math.abs(current.low - previous.close);
-    return Math.max(highLow, highClose, lowClose);
-  });
+    const tr = Math.max(highLow, highClose, lowClose);
 
-  // 20일 지수 이동 평균(EMA) 계산
-  const nValues = [];
-  const smoothingFactor = 1 / 20;
-  trValues.forEach((tr, index) => {
-    if (index === 0) {
-      nValues.push(tr);
-    } else {
-      const n = (tr - nValues[index - 1]) * smoothingFactor + nValues[index - 1];
-      nValues.push(n);
+    // 최근 20일의 TR 값으로 N 값 계산
+    let n = 0;
+    if (index >= 20) {
+      const trSlice = data.slice(index - 19, index + 1).map((d, idx) => {
+        if (idx === 0) return d.high - d.low;
+        const prev = data[index - 20 + idx];
+        const hl = d.high - d.low;
+        const hc = Math.abs(d.high - prev.close);
+        const lc = Math.abs(d.low - prev.close);
+        return Math.max(hl, hc, lc);
+      });
+      n = trSlice.reduce((sum, val) => sum + val, 0) / 20;
     }
+
+    return {
+      ...current,
+      tr,
+      n,
+    };
   });
 
-  // 마지막 N값 반환
-  return nValues[nValues.length - 1];
+  return trValues;
 };
 
-// 매매 신호 계산 함수 (동일)
+// 매매 신호 계산 함수
 const calculateSignals = (data) => {
   const signals = data.map((current, index) => {
     if (index < 20) {
@@ -89,23 +128,31 @@ const calculateSignals = (data) => {
   return signals;
 };
 
-// 커스텀 테이블 컴포넌트 (동일)
+// 커스텀 테이블 컴포넌트
 const CustomTable = ({ data }) => (
   <div className="overflow-x-auto">
     <table className="min-w-full bg-white border border-gray-300">
       <thead className="bg-gray-100">
         <tr>
-          <th className="py-2 px-4 border-b">날짜</th>
-          <th className="py-2 px-4 border-b">종가</th>
-          <th className="py-2 px-4 border-b">신호</th>
+          <th className="py-2 px-4 border-b text-center">날짜</th>
+          <th className="py-2 px-4 border-b text-center">고가</th>
+          <th className="py-2 px-4 border-b text-center">저가</th>
+          <th className="py-2 px-4 border-b text-center">종가</th>
+          <th className="py-2 px-4 border-b text-center">TR</th>
+          <th className="py-2 px-4 border-b text-center">N 값</th>
+          <th className="py-2 px-4 border-b text-center">신호</th>
         </tr>
       </thead>
       <tbody>
         {data.map((row, index) => (
           <tr key={index} className={index % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-            <td className="py-2 px-4 border-b">{row.date}</td>
-            <td className="py-2 px-4 border-b">{row.close.toFixed(2)}</td>
-            <td className="py-2 px-4 border-b">{row.signal}</td>
+            <td className="py-2 px-4 border-b text-center">{row.date}</td>
+            <td className="py-2 px-4 border-b text-center">{row.high.toFixed(2)}</td>
+            <td className="py-2 px-4 border-b text-center">{row.low.toFixed(2)}</td>
+            <td className="py-2 px-4 border-b text-center">{row.close.toFixed(2)}</td>
+            <td className="py-2 px-4 border-b text-center">{row.tr ? row.tr.toFixed(2) : '-'}</td>
+            <td className="py-2 px-4 border-b text-center">{row.n ? row.n.toFixed(2) : '-'}</td>
+            <td className="py-2 px-4 border-b text-center">{row.signal}</td>
           </tr>
         ))}
       </tbody>
@@ -121,25 +168,29 @@ const TurtleTradingApp = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleAnalysis = async () => {
-    if (!symbol) {
+  const handleAnalysis = async (selectedSymbol) => {
+    const searchSymbol = selectedSymbol || symbol;
+    if (!searchSymbol) {
       setError('주식 심볼을 입력해주세요.');
       return;
     }
     setError('');
     setLoading(true);
     try {
-      const data = await fetchStockData(symbol);
-      if (data.length < 20) {
+      const data = await fetchStockData(searchSymbol);
+      if (data.length < 21) {
         setError('데이터가 부족하여 분석할 수 없습니다.');
         setLoading(false);
         return;
       }
-      setStockData(data);
-      const n = calculateN(data);
+      // TR 값과 N 값 계산
+      const dataWithTR = calculateTRValues(data);
+      setStockData(dataWithTR);
+      const n = dataWithTR[dataWithTR.length - 1].n;
       setNValue(n);
-      const signalData = calculateSignals(data);
+      const signalData = calculateSignals(dataWithTR);
       setSignals(signalData);
+      setSymbol(searchSymbol); // 검색된 심볼로 업데이트
     } catch (err) {
       setError(err.message);
     } finally {
@@ -147,9 +198,34 @@ const TurtleTradingApp = () => {
     }
   };
 
+  // 오늘의 고가, 저가, TR 값 가져오기
+  const latestData = stockData[stockData.length - 1] || {};
+
+  // 초기화 함수 추가
+  const resetAnalysis = () => {
+    setSymbol('');
+    setStockData([]);
+    setNValue(0);
+    setSignals([]);
+    setError('');
+  };
+
   return (
     <div className="p-4 max-w-4xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">터틀 트레이딩 주식 분석</h1>
+      <div className="flex items-center justify-between mb-4">
+        {/* 왼쪽 상단에 심볼 리스트 추가 */}
+        <Stack direction="row" spacing={1}>
+          {top10Symbols.map((sym) => (
+            <Chip
+              key={sym}
+              label={sym}
+              onClick={() => handleAnalysis(sym)}
+              variant="outlined"
+            />
+          ))}
+        </Stack>
+        <h1 className="text-2xl font-bold">터틀 트레이딩 주식 분석</h1>
+      </div>
       <div className="flex items-center space-x-2 mb-4">
         <TextField
           variant="outlined"
@@ -162,11 +238,14 @@ const TurtleTradingApp = () => {
         <Button
           variant="contained"
           color="primary"
-          onClick={handleAnalysis}
+          onClick={() => handleAnalysis()}
           disabled={loading}
           startIcon={<Search />}
         >
           {loading ? '분석 중...' : '분석'}
+        </Button>
+        <Button variant="outlined" color="secondary" onClick={resetAnalysis}>
+          초기화
         </Button>
       </div>
       {error && (
@@ -182,8 +261,19 @@ const TurtleTradingApp = () => {
       )}
       {stockData.length > 0 && !error && (
         <>
-          <div className="mb-4">
-            <h2 className="text-xl font-semibold">N 값: {nValue.toFixed(2)}</h2>
+          <div className="mb-4 text-center">
+            <h2 className="text-xl font-semibold">
+              심볼: {symbol.toUpperCase()}
+            </h2>
+            <h2 className="text-xl font-semibold">
+              오늘의 고가: {latestData.high ? latestData.high.toFixed(2) : '-'} | 저가: {latestData.low ? latestData.low.toFixed(2) : '-'}
+            </h2>
+            <h2 className="text-xl font-semibold">
+              오늘의 TR 값: {latestData.tr ? latestData.tr.toFixed(2) : '-'}
+            </h2>
+            <h2 className="text-xl font-semibold">
+              N 값: {nValue ? nValue.toFixed(2) : '-'}
+            </h2>
           </div>
           <ResponsiveContainer width="100%" height={400}>
             <LineChart data={stockData}>
@@ -195,6 +285,8 @@ const TurtleTradingApp = () => {
               <Line type="monotone" dataKey="close" stroke="#8884d8" name="종가" />
               <Line type="monotone" dataKey="high" stroke="#82ca9d" name="고가" />
               <Line type="monotone" dataKey="low" stroke="#ffc658" name="저가" />
+              {/* Brush 컴포넌트 추가 */}
+              <Brush dataKey="date" height={30} stroke="#8884d8" />
             </LineChart>
           </ResponsiveContainer>
           <div className="mt-4">
