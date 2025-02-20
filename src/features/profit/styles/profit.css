@@ -1,0 +1,37 @@
+.profit-journal-container {
+  padding: 20px;
+}
+
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.chart-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.table-section {
+  margin-top: 20px;
+}
+
+.profit-positive {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.profit-negative {
+  color: #f44336;
+  font-weight: bold;
+}
+
+.MuiTableCell-head {
+  background-color: #f5f5f5;
+  font-weight: bold !important;
+}

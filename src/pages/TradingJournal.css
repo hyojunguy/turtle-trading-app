@@ -1,0 +1,164 @@
+/* 최상위 컨테이너 */
+.journal-container {
+    display: flex;
+    height: calc(100vh - 64px); /* 네비게이션 바 높이 제외 */
+    font-family: sans-serif;
+  }
+  
+  /* 왼쪽 사이드바 */
+  .journal-sidebar {
+    width: 300px;
+    background-color: #f5f5f5;
+    padding: 1rem;
+    border-right: 1px solid #e0e0e0;
+  }
+  
+  .journal-sidebar h2 {
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+  }
+  
+  .journal-sidebar button {
+    margin-bottom: 1rem;
+    padding: 0.5rem;
+    width: 100%;
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .journal-sidebar button:hover {
+    background-color: #1565c0;
+  }
+  
+  .journal-list {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .journal-item {
+    padding: 0.75rem 1rem;
+    margin: 0.5rem 0;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+  }
+  
+  .journal-item:hover {
+    background-color: #e0e0e0;
+  }
+  
+  /* 오른쪽 내용 영역 */
+  .journal-content {
+    flex: 1;
+    padding: 2rem;
+    overflow-y: auto;
+  }
+  
+  .journal-entry {
+    background-color: white;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  }
+  
+  .entry-actions {
+    margin-top: 1rem;
+  }
+  
+  .entry-actions button {
+    margin-right: 1rem;
+    padding: 0.5rem 1rem;
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .entry-actions button:hover {
+    background-color: #1565c0;
+  }
+  
+  /* 편집(작성) 화면 */
+  .journal-editor {
+    background-color: #fff;
+    padding: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .journal-editor h1 {
+    margin-bottom: 1rem;
+  }
+  
+  /* 한 줄 전체를 세로로 쌓는 구조: label 위, input 아래 */
+  .form-section-col {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: 1rem;
+  }
+  
+  .form-section-col label {
+    font-weight: bold;
+    margin-bottom: 6px;
+    font-size: 0.9rem;
+  }
+  
+  .form-section-col input,
+  .form-section-col select,
+  .form-section-col textarea {
+    font-size: 1rem;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    outline: none;
+    width: 100%;
+  }
+  
+  /* 여러 개의 입력항목을 감싸는 컨테이너 (진입/청산 공통) */
+  .form-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  /* form-section-col을 가로로 나란히 배치할 때는 너비 조정 */
+  .form-container .form-section-col {
+    flex: 1 1 300px;
+    min-width: 280px;
+  }
+  
+  /* 버튼 그룹 */
+  .button-group {
+    margin-top: 1rem;
+  }
+  
+  .button-group button {
+    margin-right: 1rem;
+    padding: 0.75rem 1.5rem;
+    background-color: #1976d2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+  }
+  
+  .button-group button:hover {
+    background-color: #1565c0;
+  }
+  
+  /* 상단바 (네비게이션 바) */
+  .top-bar {
+    height: 64px;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #ccc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    font-weight: bold;
+  }
+  

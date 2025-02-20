@@ -1,0 +1,67 @@
+/* 최상위 컨테이너 */
+.journal-container {
+  display: flex;
+  height: calc(100vh - 64px);
+  font-family: 'Roboto', sans-serif;
+  background-color: #eef2f5;
+}
+
+/* 왼쪽 사이드바 */
+.journal-sidebar {
+  width: 300px;
+  background-color: #ffffff;
+  border-right: 1px solid #ddd;
+  padding: 1rem;
+  box-shadow: 2px 0 4px rgba(0,0,0,0.05);
+}
+
+.journal-sidebar h2 {
+  margin: 0;
+  font-size: 1.3rem;
+  text-align: center;
+}
+
+.journal-sidebar button {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.journal-list {
+  list-style: none;
+  padding: 0;
+  margin-top: 1rem;
+}
+
+.journal-item {
+  padding: 0.75rem;
+  margin-bottom: 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #f7f7f7;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.journal-item:hover {
+  background-color: #e2e2e2;
+}
+
+/* 오른쪽 메인 컨텐츠 영역 */
+.journal-content {
+  flex: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+/* 일지 편집 및 보기 영역 */
+.journal-editor,
+.journal-entry {
+  background-color: #ffffff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+}
+
+.button-group {
+  display: flex;
+  gap: 1rem;
+}

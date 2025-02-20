@@ -1,0 +1,352 @@
+/* 최상위 컨테이너: 상단바와 3열 레이아웃을 포함 */
+.turtle-trading-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+/* 상단바 */
+.top-bar {
+  height: 60px;
+  background-color: #f0f0f0;
+  border-bottom: 1px solid #ccc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 3열 레이아웃 영역 */
+.app-container {
+  display: flex;
+  flex: 1;
+  width: 100%;
+}
+
+/* 왼쪽, 오른쪽 패널은 고정 너비 */
+.left-panel,
+.right-panel {
+  width: 300px;
+  overflow-y: auto;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* 가운데 패널은 남은 공간을 모두 차지 */
+.center-panel {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  box-sizing: border-box;
+}
+
+/* (기존 스타일 - 필요에 따라 수정) */
+.container {
+  max-width: 1200px;
+}
+
+.title {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.symbol-selector,
+.description {
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.symbol-selector h2,
+.description h2 {
+  color: #333;
+  font-weight: 600;
+}
+
+.symbol-list button {
+  padding: 12px;
+  border-radius: 8px;
+  transition: background-color 0.3s ease;
+}
+
+.symbol-list button:hover {
+  background-color: #f5f5f5;
+}
+
+.description p {
+  color: #666;
+}
+
+.profit-calculator-section {
+  background-color: #f5f5f5;
+  padding: 20px;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.calculator-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  margin: 15px 0;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.input-group label {
+  min-width: 100px;
+  font-weight: bold;
+}
+
+.input-group input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 150px;
+}
+
+.profit-calculator-section button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.profit-calculator-section button:hover {
+  background-color: #45a049;
+}
+
+.profit-result {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #e8f5e9;
+  border-radius: 4px;
+  text-align: center;
+}
+
+.profit-result h3 {
+  color: #2e7d32;
+  margin: 0;
+}
+
+.profit-calculator-card {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  border: 1px solid #e0e0e0;
+}
+
+.profit-calculator-header {
+  background: linear-gradient(135deg, #42a5f5, #1e88e5);
+  color: white;
+  padding: 20px;
+  text-align: center;
+  border-bottom: 1px solid #1976d2;
+}
+
+.profit-calculator-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.profit-calculator-header p {
+  margin: 8px 0 0;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.calculator-content {
+  padding: 20px;
+}
+
+.input-section {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+  border: 1px solid #e0e0e0;
+}
+
+.input-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 8px;
+}
+
+.input-table tr td {
+  padding: 4px 8px;
+}
+
+.input-table tr td:first-child {
+  width: 40%;
+  font-weight: 600;
+  color: #333;
+  font-size: 14px;
+}
+
+.input-field {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s;
+  background: white;
+}
+
+.input-field:focus {
+  border-color: #42a5f5;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(66, 165, 245, 0.2);
+}
+
+.calculate-button {
+  width: 100%;
+  background: #42a5f5;
+  color: white;
+  padding: 12px;
+  border: none;
+  border-radius: 6px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin-top: 16px;
+}
+
+.calculate-button:hover {
+  background: #1e88e5;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.result-section {
+  background: #f1f8e9;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 20px;
+  display: grid;
+  gap: 16px;
+  border: 1px solid #c5e1a5;
+}
+
+.result-card {
+  background: white;
+  padding: 16px;
+  border-radius: 6px;
+  text-align: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.result-card h3 {
+  margin: 0 0 8px;
+  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.result-card p {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.positive {
+  color: #2e7d32;
+}
+
+.negative {
+  color: #d32f2f;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 14px;
+  color: #555;
+  padding: 4px 0;
+  border-bottom: 1px dashed #e0e0e0;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row span:first-child {
+  font-weight: 600;
+}
+
+/* 기업 심볼 리스트 패널 스타일 */
+.symbol-list-panel {
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.symbol-list-panel h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.symbol-list-panel ul {
+  list-style: none;
+  padding: 0;
+}
+
+.symbol-list-panel li {
+  margin-bottom: 8px;
+}
+
+/* Chip 기본 스타일 (선택된 경우 파란색) */
+.chip-item {
+  width: 100%;
+}
+
+.analysis-summary {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.turtle-unit-info {
+  border: 1px solid #e0e0e0;
+  background-color: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 1rem;
+}
+
+.turtle-unit-info p {
+  margin: 0.5rem 0;
+  font-size: 1rem;
+}
+
+.trading-capital-input {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.trading-capital-fields {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.trading-capital-input .MuiTextField-root {
+  background-color: white;
+}
