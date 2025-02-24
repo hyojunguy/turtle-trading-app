@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import initSqlJs from 'sql.js/dist/sql-wasm.js';
 import * as XLSX from 'xlsx';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer
 } from 'recharts';
-import { 
+import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   Button, Dialog, DialogTitle, DialogContent, TextField, DialogActions,
   IconButton, Autocomplete
@@ -12,7 +11,6 @@ import {
 import { Add as AddIcon, Delete as DeleteIcon, Download as DownloadIcon } from '@mui/icons-material';
 import './styles/profit.css';
 
-// 미리 정의된 종목 옵션 (추가 입력도 가능하도록 freeSolo)
 const symbolOptions = [
   { code: 'NVDA', name: '엔비디아' },
   { code: 'NVDL', name: '엔비디아 2X Long' },
@@ -41,256 +39,149 @@ const symbolOptions = [
 const ProfitJournal = () => {
   const [trades, setTrades] = useState([]);
   const [openDialog, setOpenDialog] = useState(false);
+  // 필드명은 백엔드와 일치하도록 snake_case 사용
   const [newTrade, setNewTrade] = useState({
     symbol: '',
-    buyDate: '',
-    sellDate: '',
-    buyPrice: '',
-    sellPrice: '',
+    buy_date: '',
+    sell_date: '',
+    buy_price: '',
+    sell_price: '',
     shares: '',
-    feeRate: '0.016',
+    fee_rate: '0.016', // 입력은 퍼센트 단위가 아닌 원래 값(예: 0.016)
     note: ''
   });
-  const [db, setDb] = useState(null);
 
   /**
-   * 1) DB 초기화
+   * 백엔드 API에서 거래 내역을 불러옵니다.
    */
-  useEffect(() => {
-    const initDb = async () => {
-      try {
-        console.log('Initializing DB...');
-        const SQL = await initSqlJs({
-          locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.8.0/${file}`
-        });
-        
-        let database;
-        const savedDb = localStorage.getItem('profitJournalDb');
-        
-        if (savedDb) {
-          try {
-            const uInt8Array = new Uint8Array(JSON.parse(savedDb));
-            database = new SQL.Database(uInt8Array);
-            console.log('Loaded existing DB from localStorage');
-          } catch (error) {
-            console.error('저장된 DB 로드 실패:', error);
-            database = new SQL.Database();
-            console.log('Created a new in-memory DB (existing DB load failed)');
-          }
-        } else {
-          database = new SQL.Database();
-          console.log('Created a new in-memory DB (no existing DB)');
-        }
-
-        database.run(`CREATE TABLE IF NOT EXISTS trades (
-          id INTEGER PRIMARY KEY,
-          symbol TEXT,
-          buyDate TEXT,
-          sellDate TEXT,
-          buyPrice REAL,
-          sellPrice REAL,
-          shares REAL,
-          feeRate REAL,
-          note TEXT,
-          buyFee REAL,
-          sellFee REAL,
-          totalFees REAL,
-          netProfit REAL,
-          profit REAL,
-          status TEXT
-        )`);
-
-        setDb(database);
-      } catch (error) {
-        console.error('DB 초기화 실패:', error);
-      }
-    };
-
-    initDb();
+  const loadTrades = useCallback(async () => {
+    try {
+      const res = await fetch('/api/profit-journals');
+      if (!res.ok) throw new Error('거래 내역 로드 실패');
+      const data = await res.json();
+      setTrades(data);
+      console.log('Loaded trades from API:', data);
+    } catch (error) {
+      console.error(error);
+    }
   }, []);
 
-  /**
-   * 2) DB가 준비되면 한 번만 거래내역 불러오기
-   */
-  const loadTradesFromDb = useCallback(() => {
-    if (!db) return;
-    try {
-      const res = db.exec("SELECT * FROM trades ORDER BY buyDate DESC");
-      if (res.length > 0) {
-        const columns = res[0].columns;
-        const rows = res[0].values.map(rowValues => {
-          const rowObj = {};
-          rowValues.forEach((val, index) => {
-            rowObj[columns[index]] = val;
-          });
-          return rowObj;
-        });
-        setTrades(rows);
-        console.log('Loaded trades from DB:', rows);
-      } else {
-        setTrades([]);
-        console.log('No trades found in DB');
-      }
-    } catch (error) {
-      console.error('거래 내역 로드 실패:', error);
-    }
-  }, [db]);
-
   useEffect(() => {
-    if (db) {
-      loadTradesFromDb();
-    }
-  }, [db, loadTradesFromDb]);
+    loadTrades();
+  }, [loadTrades]);
 
   /**
-   * 3) 컴포넌트 언마운트 시 DB를 localStorage에 저장 (db.close()는 제거)
+   * 새 거래 추가: 입력값 검증 및 수수료, 순손익, 수익률, 상태 계산 후 POST 요청
    */
-  useEffect(() => {
-    return () => {
-      if (db) {
-        try {
-          const data = db.export();
-          localStorage.setItem('profitJournalDb', JSON.stringify(Array.from(data)));
-          console.log('DB exported to localStorage on unmount');
-          // db.close();  // DB를 종료하면 다시 접근이 안 되므로 제거
-        } catch (error) {
-          console.error('DB cleanup 실패:', error);
-        }
-      }
-    };
-  }, [db]);
-
-  /**
-   * 4) 새 거래 추가
-   *    - 추가 직후 DB export를 하여 곧바로 로컬 스토리지에 반영
-   */
-  const handleAddTrade = () => {
-    if (!newTrade.symbol || !newTrade.buyDate || !newTrade.buyPrice || !newTrade.shares) {
+  const handleAddTrade = async () => {
+    const { symbol, buy_date, buy_price, shares } = newTrade;
+    if (!symbol || !buy_date || !buy_price || !shares) {
       alert('필수 항목을 입력해주세요.');
       return;
     }
-
     try {
-      const buyTotal = parseFloat(newTrade.buyPrice) * parseFloat(newTrade.shares);
-      const sellTotal = newTrade.sellPrice ? parseFloat(newTrade.sellPrice) * parseFloat(newTrade.shares) : 0;
-      const feeRate = parseFloat(newTrade.feeRate) / 100;
-      
+      const buyTotal = parseFloat(buy_price) * parseFloat(shares);
+      const sellTotal = newTrade.sell_date && newTrade.sell_price 
+        ? parseFloat(newTrade.sell_price) * parseFloat(shares) 
+        : 0;
+      // fee_rate가 이미 소수형태(예: 0.016)라고 가정
+      const feeRate = parseFloat(newTrade.fee_rate);
       const buyFee = buyTotal * feeRate;
-      const sellFee = newTrade.sellPrice ? sellTotal * feeRate : 0;
+      const sellFee = newTrade.sell_date && newTrade.sell_price ? sellTotal * feeRate : 0;
       const totalFees = buyFee + sellFee;
-
-      const netProfit = newTrade.sellPrice 
+      const netProfit = newTrade.sell_date && newTrade.sell_price 
         ? (sellTotal - buyTotal - totalFees)
         : null;
-      const profitRate = netProfit 
-        ? ((netProfit / buyTotal) * 100).toFixed(2)
+      const profitRate = netProfit !== null 
+        ? parseFloat(((netProfit / buyTotal) * 100).toFixed(2))
         : null;
+      
+      const status = newTrade.sell_date && newTrade.sell_price ? '완료' : '진행중';
 
-      if (db) {
-        const stmt = db.prepare(`
-          INSERT INTO trades (
-            id, symbol, buyDate, sellDate, buyPrice, sellPrice, 
-            shares, feeRate, note, buyFee, sellFee, totalFees, 
-            netProfit, profit, status
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
+      const payload = {
+        symbol: newTrade.symbol,
+        buy_date: newTrade.buy_date,
+        sell_date: newTrade.sell_date || null,
+        buy_price: parseFloat(newTrade.buy_price),
+        sell_price: newTrade.sell_date && newTrade.sell_price ? parseFloat(newTrade.sell_price) : null,
+        shares: parseFloat(newTrade.shares),
+        fee_rate: feeRate,
+        note: newTrade.note,
+        buy_fee: buyFee,
+        sell_fee: sellFee,
+        total_fees: totalFees,
+        net_profit: netProfit,
+        profit: profitRate,
+        status
+      };
 
-        stmt.run([
-          Date.now(),
-          newTrade.symbol,
-          newTrade.buyDate,
-          newTrade.sellDate || null,
-          parseFloat(newTrade.buyPrice),
-          newTrade.sellPrice ? parseFloat(newTrade.sellPrice) : null,
-          parseFloat(newTrade.shares),
-          parseFloat(newTrade.feeRate),
-          newTrade.note,
-          buyFee,
-          sellFee,
-          totalFees,
-          netProfit,
-          profitRate,
-          newTrade.sellPrice ? '완료' : '진행중'
-        ]);
-        stmt.free();
-
-        // 여기서 바로 localStorage에 export
-        const data = db.export();
-        localStorage.setItem('profitJournalDb', JSON.stringify(Array.from(data)));
-        console.log('New trade inserted and DB exported to localStorage');
-
-        loadTradesFromDb(); // 테이블 갱신
-        setOpenDialog(false);
-        setNewTrade({
-          symbol: '',
-          buyDate: '',
-          sellDate: '',
-          buyPrice: '',
-          sellPrice: '',
-          shares: '',
-          feeRate: '0.016',
-          note: ''
-        });
-      }
+      const res = await fetch('/api/profit-journals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('거래 추가 실패');
+      const responseData = await res.json();
+      console.log('New trade inserted:', responseData);
+      await loadTrades();
+      setOpenDialog(false);
+      setNewTrade({
+        symbol: '',
+        buy_date: '',
+        sell_date: '',
+        buy_price: '',
+        sell_price: '',
+        shares: '',
+        fee_rate: '0.016',
+        note: ''
+      });
     } catch (error) {
-      console.error('거래 추가 실패:', error);
+      console.error('거래 추가 중 오류:', error);
       alert('거래 추가 중 오류가 발생했습니다.');
     }
   };
 
   /**
-   * 5) 거래 삭제
-   *    - 삭제 후 DB export
+   * 거래 삭제: 백엔드 DELETE 엔드포인트를 호출합니다.
+   * (백엔드에 DELETE /api/profit-journals/{id}가 구현되어 있다고 가정)
    */
-  const handleDeleteTrade = (id) => {
+  const handleDeleteTrade = async (id) => {
     if (!window.confirm('이 거래 기록을 삭제하시겠습니까?')) return;
-    if (db) {
-      try {
-        db.run("DELETE FROM trades WHERE id = ?", [id]);
-        // 삭제 후 export
-        const data = db.export();
-        localStorage.setItem('profitJournalDb', JSON.stringify(Array.from(data)));
-        console.log(`Trade ${id} deleted and DB exported to localStorage`);
-        loadTradesFromDb();
-      } catch (error) {
-        console.error('거래 삭제 실패:', error);
-      }
+    try {
+      const res = await fetch(`/api/profit-journals/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('삭제 실패');
+      console.log(`Trade ${id} deleted`);
+      await loadTrades();
+    } catch (error) {
+      console.error('거래 삭제 실패:', error);
+      alert('거래 삭제 중 오류가 발생했습니다.');
     }
   };
 
   /**
-   * 6) 일별 수익률 계산 (완료된 거래 기준)
+   * 완료된 거래 기준 일별 수익률 및 누적 수익률 계산
    */
   const calculateDailyProfits = () => {
-    const completedTrades = trades.filter(trade => trade.status === '완료' && trade.sellDate);
+    const completedTrades = trades.filter(trade => trade.status === '완료' && trade.sell_date);
     const dailyProfits = {};
 
     completedTrades.forEach(trade => {
-      const date = trade.sellDate;
+      const date = trade.sell_date;
       if (!dailyProfits[date]) {
-        dailyProfits[date] = {
-          date,
-          profit: 0,
-          cumulative: 0
-        };
+        dailyProfits[date] = { date, profit: 0, cumulative: 0 };
       }
       dailyProfits[date].profit += parseFloat(trade.profit);
     });
 
-    // 날짜순 정렬 및 누적 수익률 계산
-    const sorted = Object.values(dailyProfits)
-      .sort((a, b) => new Date(a.date) - new Date(b.date));
-
+    const sorted = Object.values(dailyProfits).sort((a, b) => new Date(a.date) - new Date(b.date));
     return sorted.map((item, index, array) => ({
       ...item,
-      cumulative: index > 0 
-        ? array[index - 1].cumulative + item.profit 
-        : item.profit
+      cumulative: index > 0 ? array[index - 1].cumulative + item.profit : item.profit
     }));
   };
 
   /**
-   * 7) 엑셀 다운로드
+   * 엑셀 다운로드: 현재 거래 내역을 XLSX 파일로 저장
    */
   const handleDownloadExcel = () => {
     const worksheet = XLSX.utils.json_to_sheet(trades);
@@ -322,7 +213,7 @@ const ProfitJournal = () => {
         </div>
       </div>
 
-      {/* 수익률 그래프 */}
+      {/* 누적 수익률 그래프 */}
       <div className="chart-section">
         <h2>누적 수익률 추이</h2>
         <ResponsiveContainer width="100%" height={400}>
@@ -358,23 +249,19 @@ const ProfitJournal = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {trades.map((trade) => (
+            {trades.map(trade => (
               <TableRow key={trade.id}>
                 <TableCell>{trade.symbol}</TableCell>
-                <TableCell>{trade.buyDate}</TableCell>
-                <TableCell>{trade.sellDate}</TableCell>
-                <TableCell>${trade.buyPrice}</TableCell>
-                <TableCell>${trade.sellPrice}</TableCell>
+                <TableCell>{trade.buy_date}</TableCell>
+                <TableCell>{trade.sell_date || '-'}</TableCell>
+                <TableCell>${trade.buy_price}</TableCell>
+                <TableCell>{trade.sell_price !== null ? `$${trade.sell_price}` : '-'}</TableCell>
                 <TableCell>{trade.shares}</TableCell>
-                <TableCell>${trade.totalFees}</TableCell>
-                <TableCell
-                  className={trade.netProfit >= 0 ? 'profit-positive' : 'profit-negative'}
-                >
-                  {trade.netProfit !== null ? `$${trade.netProfit.toFixed(2)}` : '-'}
+                <TableCell>${trade.total_fees}</TableCell>
+                <TableCell className={trade.net_profit >= 0 ? 'profit-positive' : 'profit-negative'}>
+                  {trade.net_profit !== null ? `$${parseFloat(trade.net_profit).toFixed(2)}` : '-'}
                 </TableCell>
-                <TableCell
-                  className={trade.profit >= 0 ? 'profit-positive' : 'profit-negative'}
-                >
+                <TableCell className={trade.profit >= 0 ? 'profit-positive' : 'profit-negative'}>
                   {trade.profit ? `${trade.profit}%` : '-'}
                 </TableCell>
                 <TableCell>{trade.status}</TableCell>
@@ -394,7 +281,6 @@ const ProfitJournal = () => {
       <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
         <DialogTitle>새 거래 추가</DialogTitle>
         <DialogContent>
-          {/* Autocomplete로 종목 옵션 선택 (freeSolo로 자유 입력 허용) */}
           <Autocomplete
             freeSolo
             options={symbolOptions.map(option => `${option.code} - ${option.name}`)}
@@ -409,8 +295,8 @@ const ProfitJournal = () => {
           <TextField
             label="매수일"
             type="date"
-            value={newTrade.buyDate}
-            onChange={(e) => setNewTrade({ ...newTrade, buyDate: e.target.value })}
+            value={newTrade.buy_date}
+            onChange={e => setNewTrade({ ...newTrade, buy_date: e.target.value })}
             fullWidth
             margin="normal"
             InputLabelProps={{ shrink: true }}
@@ -418,8 +304,8 @@ const ProfitJournal = () => {
           <TextField
             label="매도일"
             type="date"
-            value={newTrade.sellDate}
-            onChange={(e) => setNewTrade({ ...newTrade, sellDate: e.target.value })}
+            value={newTrade.sell_date}
+            onChange={e => setNewTrade({ ...newTrade, sell_date: e.target.value })}
             fullWidth
             margin="normal"
             InputLabelProps={{ shrink: true }}
@@ -427,16 +313,16 @@ const ProfitJournal = () => {
           <TextField
             label="매수가 ($)"
             type="number"
-            value={newTrade.buyPrice}
-            onChange={(e) => setNewTrade({ ...newTrade, buyPrice: e.target.value })}
+            value={newTrade.buy_price}
+            onChange={e => setNewTrade({ ...newTrade, buy_price: e.target.value })}
             fullWidth
             margin="normal"
           />
           <TextField
             label="매도가 ($)"
             type="number"
-            value={newTrade.sellPrice}
-            onChange={(e) => setNewTrade({ ...newTrade, sellPrice: e.target.value })}
+            value={newTrade.sell_price}
+            onChange={e => setNewTrade({ ...newTrade, sell_price: e.target.value })}
             fullWidth
             margin="normal"
           />
@@ -444,29 +330,26 @@ const ProfitJournal = () => {
             label="수량"
             type="number"
             value={newTrade.shares}
-            onChange={(e) => setNewTrade({ ...newTrade, shares: e.target.value })}
+            onChange={e => setNewTrade({ ...newTrade, shares: e.target.value })}
             fullWidth
             margin="normal"
           />
           <TextField
-            label="수수료율 (%)"
+            label="수수료율"
             type="number"
-            value={newTrade.feeRate}
-            onChange={(e) => setNewTrade({ ...newTrade, feeRate: e.target.value })}
+            value={newTrade.fee_rate}
+            onChange={e => setNewTrade({ ...newTrade, fee_rate: e.target.value })}
             fullWidth
             margin="normal"
             InputProps={{
-              inputProps: { 
-                min: 0,
-                step: 0.001
-              }
+              inputProps: { min: 0, step: 0.001 }
             }}
-            helperText="기본값: 0.016% (즉 0.00016)"
+            helperText="예: 0.016 (즉, 1.6%)"
           />
           <TextField
             label="메모"
             value={newTrade.note}
-            onChange={(e) => setNewTrade({ ...newTrade, note: e.target.value })}
+            onChange={e => setNewTrade({ ...newTrade, note: e.target.value })}
             fullWidth
             margin="normal"
             multiline
